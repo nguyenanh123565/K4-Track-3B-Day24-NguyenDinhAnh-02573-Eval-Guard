@@ -1,45 +1,42 @@
-# Phân tích lỗi Phase A
+﻿# Phân tích lỗi Phase A — ST1
 
-Nhóm: {{Tên nhóm}}
+## Bằng chứng và trạng thái
 
-Người phụ trách: {{Họ tên và MSSV}}
+Nguồn hiện có: artifacts/answers_50q.json, fixtures và source Tasks 1–4.
+Answers có 50 records: factual 20, multi_hop 20, adversarial 10;
+extractive_fallback 50/50, generation_model null 50/50.
+Chưa có artifacts/ragas_50q.json, timestamp hoặc evaluator metadata của lượt thật.
+RAGAS scores, bottom 10, matrix và nhóm yếu nhất chưa có; không điền 0 thay số liệu.
+Người phụ trách báo cáo cụ thể chưa được phân công.
 
-Nguồn: `artifacts/ragas_50q.json`; run timestamp: {{created_at}}.
-Generation mode/fallback và điều kiện chạy: {{Điều kiện thực tế}}.
-Models generation/evaluator: {{metadata.models.generation và metadata.models.evaluator từ m4}}.
+Theo người dùng, OpenAI API trả HTTP 429 insufficient_quota / credit_balance_exhausted;
+repo chưa lưu log lỗi. Chưa có RAGAS live evidence. Offline suite 98 passed,
+3 integration deselected chỉ kiểm tra logic với mocks, không thay experiment.
 
-## Điểm theo distribution
+## Methodology và contract
 
-| Metric | factual (20) | multi_hop (20) | adversarial (10) |
-|---|---|---|---|
-| faithfulness | {{factual_faithfulness}} | {{multi_faithfulness}} | {{adversarial_faithfulness}} |
-| answer_relevancy | {{factual_relevancy}} | {{multi_relevancy}} | {{adversarial_relevancy}} |
-| context_precision | {{factual_precision}} | {{multi_precision}} | {{adversarial_precision}} |
-| context_recall | {{factual_recall}} | {{multi_recall}} | {{adversarial_recall}} |
-| avg_score | {{factual_mean}} | {{multi_mean}} | {{adversarial_mean}} |
+Task 1 group theo distribution, không sửa dữ liệu. Task 2 gọi m4 một lần với
+question/answer/contexts/ground_truth theo thứ tự, giữ ids và fields nguồn.
+Bốn metrics Python float hữu hạn [0,1]: faithfulness (context hỗ trợ answer),
+answer_relevancy (đáp ứng question), context_precision (retrieval đúng) và
+context_recall (retrieval đủ). Evaluator IDs lấy từ m4 thực dùng, không lấy JUDGE_MODEL.
 
-## Bottom 10 và nguyên nhân
+avg_score là trung bình bốn metrics. Bottom 10 sort tăng dần, rank từ 1, kèm
+question_id/distribution/question/avg_score/worst_metric/diagnosis/suggested_fix.
+Diagnosis/fix từ DIAGNOSTIC_TREE là gợi ý; exporter giữ nguyên rows Task 3.
 
-{{Điền đúng 10 rows từ Task 3: rank, id, question, distribution, avg_score,
-worst_metric, diagnosis và suggested_fix. Không thay diagnosis học viên bằng
-diagnosis mặc định của exporter.}}
+Matrix worst_metric × distribution đếm mỗi câu một cell, không coi mọi câu là
+failure. Mean chỉ tính nhóm không rỗng; nhóm yếu có mean thấp nhất, không chọn
+count lớn nhất. Dominant metric có tổng matrix lớn nhất. Counts 20/20/10 là kích
+thước fixture, không phải kết quả chất lượng.
 
-{{Đối chiếu answer/contexts/reference của ít nhất các câu đại diện cho nhóm lỗi;
-giải thích lỗi retrieval, generation, phiên bản hoặc phủ định bằng bằng chứng.}}
+## Phần chờ evaluation thật và giới hạn
 
-## Matrix và nhóm yếu nhất
+Sau khi có ragas_50q.json hợp lệ, bổ sung scores/summaries, bottom rows, matrix,
+models/timestamp và đối chiếu answer/contexts/reference của các câu yếu để phân
+biệt retrieval, generation, phiên bản và phủ định. Chưa kết luận nhóm nào yếu,
+adversarial thấp hơn factual, nhận ra version conflict hoặc đạt bonus.
 
-{{Điền matrix 4 metric × 3 distributions. Mỗi câu được đếm theo worst_metric,
-không coi mọi câu là failure.}}
-
-Nhóm yếu theo mean thấp nhất: {{distribution}}; mean: {{giá trị}}.
-Worst metric xuất hiện nhiều nhất: {{metric}}; số câu: {{số lượng}}.
-
-{{Giải thích vì sao nhóm đó yếu. Không dùng tổng 20/20/10 chọn dominant distribution.
-Đề xuất sửa cụ thể và cách chạy lại để biết sửa có hiệu quả.}}
-
-## Bẫy adversarial và giới hạn
-
-{{So sánh với factual/multi_hop, nêu version conflict/negation trong bottom 10.
-Điểm thấp hơn không tự chứng minh pipeline đã nhận ra bẫy. Ghi giới hạn số mẫu,
-model và fallback nếu có.}}
+Answers extractive fallback không chứng minh generation LLM thành công. Không
+trình bày synthetic/mock artifacts như experiment, không đổi run_kind thành live.
+Phân bố nhỏ và evaluator/model/fallback phải được ghi rõ khi diễn giải kết quả sau này.

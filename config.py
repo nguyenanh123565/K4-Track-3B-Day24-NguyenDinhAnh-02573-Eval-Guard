@@ -28,7 +28,12 @@ SEMANTIC_THRESHOLD = 0.85
 BM25_TOP_K = 20
 DENSE_TOP_K = 20
 HYBRID_TOP_K = 20
+RRF_K = 60
 RERANK_TOP_K = 3
+
+# Explicit evaluator configuration, independent of generation and judge models.
+RAGAS_LLM_MODEL = os.getenv("RAGAS_LLM_MODEL", "gpt-4o-mini")
+RAGAS_EMBEDDING_MODEL = os.getenv("RAGAS_EMBEDDING_MODEL", "text-embedding-ada-002")
 
 # --- Paths ---
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))

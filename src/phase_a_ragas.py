@@ -6,6 +6,7 @@ import json
 import os
 import sys
 from dataclasses import asdict, dataclass
+from math import isfinite
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TEST_SET_PATH, ANSWERS_PATH, ARTIFACTS_DIR
@@ -114,12 +115,13 @@ def group_by_distribution(test_set: list[dict]) -> dict[str, list[dict]]:
     Returns:
         {"factual": [...], "multi_hop": [...], "adversarial": [...]}
     """
-    # TODO: Implement
-    # groups = {"factual": [], "multi_hop": [], "adversarial": []}
-    # for item in test_set:
-    #     groups[item["distribution"]].append(item)
-    # return groups
-    return {"factual": [], "multi_hop": [], "adversarial": []}
+    groups = {"factual": [], "multi_hop": [], "adversarial": []}
+    for item in test_set:
+        distribution = item["distribution"]
+        if distribution not in groups:
+            raise ValueError(f"Unknown distribution: {distribution!r}")
+        groups[distribution].append(item)
+    return groups
 
 
 def run_ragas_50q(answers: list[dict]) -> RagasEvaluation:
@@ -135,32 +137,41 @@ def run_ragas_50q(answers: list[dict]) -> RagasEvaluation:
         4. Return RagasEvaluation(results, raw["metadata"]["evaluator_models"])
            m4 must report its actual LLM/embedding models; never guess JUDGE_MODEL.
     """
-    # TODO: Implement
-    # try:
-    #     from src.m4_eval import evaluate_ragas
-    # except ImportError:
-    #     print("⚠️  Không tìm thấy src/m4_eval.py — đã copy từ Day 18 chưa?")
-    #     raise ValueError("Missing m4 evaluator; cannot declare its actual models")
-    #
-    # questions     = [a["question"]    for a in answers]
-    # ans_texts     = [a["answer"]      for a in answers]
-    # contexts      = [a["contexts"]    for a in answers]
-    # ground_truths = [a["ground_truth"] for a in answers]
-    #
-    # raw = evaluate_ragas(questions, ans_texts, contexts, ground_truths)
-    # per_q = raw.get("per_question", [])
-    #
-    # results = []
-    # for a, pq in zip(answers, per_q):
-    #     results.append(RagasResult(
-    #         question_id=a["id"], distribution=a["distribution"],
-    #         question=a["question"], answer=a["answer"],
-    #         contexts=a["contexts"], ground_truth=a["ground_truth"],
-    #         faithfulness=float(pq.faithfulness), answer_relevancy=float(pq.answer_relevancy),
-    #         context_precision=float(pq.context_precision), context_recall=float(pq.context_recall),
-    #     ))
-    # return RagasEvaluation(results, raw["metadata"]["evaluator_models"])
-    return RagasEvaluation([], [])
+    from src.m4_eval import evaluate_ragas
+
+    raw = evaluate_ragas(
+        [a["question"] for a in answers],
+        [a["answer"] for a in answers],
+        [a["contexts"] for a in answers],
+        [a["ground_truth"] for a in answers],
+    )
+    per_question = raw["per_question"]
+    if len(per_question) != len(answers):
+        raise ValueError("RAGAS per_question count must match answers")
+    evaluator_models = raw["metadata"]["evaluator_models"]
+    if (not isinstance(evaluator_models, list) or not evaluator_models
+            or any(not isinstance(model, str) or not model.strip()
+                   for model in evaluator_models)):
+        raise ValueError("m4 must report actual evaluator model IDs")
+    results = []
+    for answer, measured in zip(answers, per_question):
+        scores = {}
+        for metric in DIAGNOSTIC_TREE:
+            value = measured[metric] if isinstance(measured, dict) else getattr(measured, metric)
+            try:
+                score = float(value)
+            except (TypeError, ValueError, OverflowError) as error:
+                raise ValueError(f"Invalid {metric} for answer {answer['id']}") from error
+            if not isfinite(score) or not 0 <= score <= 1:
+                raise ValueError(f"Invalid {metric} for answer {answer['id']}: {score}")
+            scores[metric] = score
+        results.append(RagasResult(
+            question_id=answer["id"], distribution=answer["distribution"],
+            question=answer["question"], answer=answer["answer"],
+            contexts=list(answer["contexts"]), ground_truth=answer["ground_truth"],
+            **scores,
+        ))
+    return RagasEvaluation(results, evaluator_models)
 
 
 def bottom_10(results: list[RagasResult]) -> list[dict]:
@@ -171,24 +182,16 @@ def bottom_10(results: list[RagasResult]) -> list[dict]:
           "question": ..., "avg_score": ..., "worst_metric": ...,
           "diagnosis": ..., "suggested_fix": ...}, ...]
     """
-    # TODO: Implement
-    # sorted_asc = sorted(results, key=lambda r: r.avg_score)
-    # bottom = sorted_asc[:10]
-    # output = []
-    # for i, r in enumerate(bottom):
-    #     diag, fix = DIAGNOSTIC_TREE[r.worst_metric]
-    #     output.append({
-    #         "rank": i + 1,
-    #         "question_id": r.question_id,
-    #         "distribution": r.distribution,
-    #         "question": r.question,
-    #         "avg_score": round(r.avg_score, 4),
-    #         "worst_metric": r.worst_metric,
-    #         "diagnosis": diag,
-    #         "suggested_fix": fix,
-    #     })
-    # return output
-    return []
+    rows = []
+    for rank, result in enumerate(sorted(results, key=lambda r: r.avg_score)[:10], 1):
+        diagnosis, fix = DIAGNOSTIC_TREE[result.worst_metric]
+        rows.append({
+            "rank": rank, "question_id": result.question_id,
+            "distribution": result.distribution, "question": result.question,
+            "avg_score": result.avg_score, "worst_metric": result.worst_metric,
+            "diagnosis": diagnosis, "suggested_fix": fix,
+        })
+    return rows
 
 
 def cluster_analysis(results: list[RagasResult]) -> dict:
@@ -211,31 +214,33 @@ def cluster_analysis(results: list[RagasResult]) -> dict:
           "insight": "..."
         }
     """
-    # TODO: Implement
-    # matrix = {
-    #     metric: {"factual": 0, "multi_hop": 0, "adversarial": 0}
-    #     for metric in DIAGNOSTIC_TREE
-    # }
-    # for r in results:
-    #     matrix[r.worst_metric][r.distribution] += 1
-    #
-    # # Find dominant failure
-    # means = {
-    #     d: sum(r.avg_score for r in results if r.distribution == d) /
-    #        sum(r.distribution == d for r in results)
-    #     for d in ("factual", "multi_hop", "adversarial")
-    #     if any(r.distribution == d for r in results)
-    # }
-    # dominant_dist = min(means, key=means.get)  # lowest quality, NOT largest group
-    # dominant_metric = max(matrix, key=lambda m: sum(matrix[m].values()))
-    # insight = (f"Distribution '{dominant_dist}' có điểm trung bình thấp nhất. "
-    #            f"Metric '{dominant_metric}' là điểm yếu chủ đạo. "
-    #            f"Gợi ý: {DIAGNOSTIC_TREE[dominant_metric][1]}")
-    #
-    # return {"matrix": matrix, "distribution_avg_scores": means,
-    #         "dominant_failure_distribution": dominant_dist,
-    #         "dominant_failure_metric": dominant_metric, "insight": insight}
-    return {}
+    distributions = ("factual", "multi_hop", "adversarial")
+    matrix = {metric: {d: 0 for d in distributions} for metric in DIAGNOSTIC_TREE}
+    grouped_scores = {d: [] for d in distributions}
+    for result in results:
+        if result.distribution not in grouped_scores:
+            raise ValueError(f"Unknown distribution: {result.distribution!r}")
+        matrix[result.worst_metric][result.distribution] += 1
+        grouped_scores[result.distribution].append(result.avg_score)
+    means = {d: sum(scores) / len(scores)
+             for d, scores in grouped_scores.items() if scores}
+    dominant_distribution = min(means, key=means.get) if means else None
+    dominant_metric = max(matrix, key=lambda m: sum(matrix[m].values())) if results else None
+    if results:
+        insight = (
+            f"Distribution '{dominant_distribution}' has the lowest mean avg_score "
+            f"({means[dominant_distribution]:.4f}). '{dominant_metric}' is the most "
+            f"frequent worst metric ({sum(matrix[dominant_metric].values())} questions). "
+            f"Suggested improvement: {DIAGNOSTIC_TREE[dominant_metric][1]}. "
+            "The matrix counts every question, not only failures."
+        )
+    else:
+        insight = "No evaluation results; no weakest distribution or dominant metric can be identified."
+    return {
+        "matrix": matrix, "distribution_avg_scores": means,
+        "dominant_failure_distribution": dominant_distribution,
+        "dominant_failure_metric": dominant_metric, "insight": insight,
+    }
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
