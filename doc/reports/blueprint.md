@@ -1,9 +1,13 @@
 ﻿# Blueprint CI/CD cho RAG và guardrails — ST1
 
 Đây là kiến trúc/vận hành đề xuất, chưa phải workflow CI/CD đã triển khai.
-Trưởng nhóm: Nguyễn Đình Anh, 2A202602573; người vận hành từng phần cần phân công.
+Trưởng nhóm: Nguyễn Đình Anh, 2A202602573, phụ trách tích hợp và verification
+với Codex hỗ trợ. Thành viên còn lại dự kiến review/checker/tài liệu; chưa có
+bằng chứng người này đã thực hiện. Vận hành live là kế hoạch sau khi quota sẵn sàng.
 Bằng chứng: source, fixtures, answers fallback và offline suite 98 passed,
 3 integration deselected. Chưa có ba live JSON reports A/B/C.
+
+Chưa có live evidence do OpenAI quota exhausted.
 
 ## Kiến trúc và failure actions đề xuất
 

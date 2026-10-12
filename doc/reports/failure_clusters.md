@@ -7,7 +7,10 @@ Answers có 50 records: factual 20, multi_hop 20, adversarial 10;
 extractive_fallback 50/50, generation_model null 50/50.
 Chưa có artifacts/ragas_50q.json, timestamp hoặc evaluator metadata của lượt thật.
 RAGAS scores, bottom 10, matrix và nhóm yếu nhất chưa có; không điền 0 thay số liệu.
-Người phụ trách báo cáo cụ thể chưa được phân công.
+Phụ trách tích hợp báo cáo: Nguyễn Đình Anh với Codex hỗ trợ; thành viên còn lại
+review theo phân công dự kiến trong TEAM, chưa có bằng chứng review cá nhân.
+
+Chưa có live evidence do OpenAI quota exhausted.
 
 Theo người dùng, OpenAI API trả HTTP 429 insufficient_quota / credit_balance_exhausted;
 repo chưa lưu log lỗi. Chưa có RAGAS live evidence. Offline suite 98 passed,

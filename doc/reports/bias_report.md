@@ -8,7 +8,10 @@ lỗi; không gọi lại API trong bước tài liệu này. Answers có 50 rec
 extractive_fallback 50/50, generation_model null. Offline suite 98 passed,
 3 integration deselected không thay kết quả judge thật. Winners/scores/reasoning,
 kappa, agreement, bias rates, timestamp và model provenance live chưa có.
-Người phụ trách báo cáo cụ thể chưa được phân công.
+Phụ trách tích hợp báo cáo: Nguyễn Đình Anh với Codex hỗ trợ; thành viên còn lại
+review theo phân công dự kiến trong TEAM, chưa có bằng chứng review cá nhân.
+
+Chưa có live evidence do OpenAI quota exhausted.
 
 ## Pairwise và swap
 
